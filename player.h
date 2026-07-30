@@ -359,7 +359,8 @@ static bool musicPlayDefault()
     }
     g_plCur = -1;
     strcpy_s(g_plFormat, "CHIPTUNE");
-    strcpy_s(g_plStatus, "DIGGER THEME");
+    // Worded so it cannot be mistaken for a playlist entry -- it is not one.
+    strcpy_s(g_plStatus, "BUILT-IN THEME");
     return true;
 }
 static bool musicPlayIndex(int idx)
@@ -532,7 +533,8 @@ static const float TB_BTN_R = 15.0f;
 static const float TB_PREV = 28.0f, TB_PLAY = 64.0f, TB_NEXT = 100.0f,
                    TB_SHUF = 136.0f, TB_OPEN = 172.0f, TB_LIST = 208.0f;
 static const float TB_NAME_X = 234.0f;
-static const float TB_SEEK_X0 = 500.0f, TB_SEEK_X1 = 792.0f, TB_SEEK_H = 8.0f;
+static const float TB_TIME_X = 440.0f;           // fixed slot, clear of the name
+static const float TB_SEEK_X0 = 560.0f, TB_SEEK_X1 = 800.0f, TB_SEEK_H = 8.0f;
 static const float TB_VOL_X0 = 832.0f, TB_VOL_X1 = 928.0f;
 static const float TB_SPEC_X = 952.0f;           // retro bar spectrum origin
 static const float TB_SPEC_BW = 10.0f;           // per-bar pitch

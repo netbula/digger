@@ -218,6 +218,13 @@ static void placeDigger()
 }
 static void restartAfterDeath()
 {
+    // Dying must not cost the stage its monsters.  The ones on screen go back
+    // into the pool to be released again -- otherwise the roster shrinks with
+    // every life and the stage gets *easier* the more you fail, which also
+    // quietly lowers the "kill them all" bar for clearing it.
+    for (const Monster& m : G.mons)
+        if (m.kind == MK_BORER && G.borersOut > 0) G.borersOut--;
+    G.monLeft += (int)G.mons.size();
     G.mons.clear();
     G.bul.alive = false;
     for (Shell& sh : G.shells) sh.alive = false;
@@ -1351,13 +1358,15 @@ static void drawToolbarText(HDC hdc)
     // track name, elided so it never runs into the seek bar
     char name[64];
     strncpy_s(name, g_plStatus, _TRUNCATE);
-    if (strlen(name) > 18) { name[15] = 0; strcat_s(name, "..."); }
+    if (strlen(name) > 15) { name[12] = 0; strcat_s(name, "..."); }
     gdiText(hdc, TB_NAME_X, TB_Y - 10.0f, name, g_fontSml, RGB(220, 230, 245), 0);
 
     fmtTime(a, sizeof(a), g_musFrames ? g_musPos / SR : 0.0);
     fmtTime(b, sizeof(b), g_musFrames ? (double)g_musFrames / SR : 0.0);
+    // Left-aligned at a fixed slot: right-aligning it against the seek bar let
+    // a long track name run straight into the clock.
     sprintf_s(buf, "%s / %s", a, b);
-    gdiText(hdc, TB_SEEK_X0 - 12.0f, TB_Y - 10.0f, buf, g_fontSml, RGB(165, 180, 200), 2);
+    gdiText(hdc, TB_TIME_X, TB_Y - 10.0f, buf, g_fontSml, RGB(165, 180, 200), 0);
 
     // small numeric BPM readout to the right of the spectrum
     if (g_bpm > 20 && g_bpm < 260) {

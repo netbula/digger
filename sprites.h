@@ -284,16 +284,23 @@ static void drawEnemyTank(float px, float py, int tier, int kind, int dir, int g
     float twist  = bandLvl(band, 6) * mus;        // turret rocks
     float muzzle = bandLvl(band, 8) * mus;        // muzzle glows
 
-    // Music-driven livery.  Only the hull tones are pushed toward the band
-    // colour -- `trim` is deliberately left alone, because the armour plates and
-    // the hit pips drawn in it are how the player counts remaining armour.  Lose
-    // that and the light show would cost you the tactical read.
+    // Music-driven livery.  Mixing between two already-saturated tier colours
+    // reads as almost nothing (magenta toward red is barely a shift), and at a
+    // 48px cell only the hull would change anyway.  So the livery goes most of
+    // the way to the band colour and an additive halo carries the pulse -- on
+    // the near-black tunnel background that halo is what actually catches the
+    // eye.  `trim` is still untouched: the armour plates and hit pips drawn in
+    // it are how the player counts remaining armour, and the halo is painted
+    // *under* the tank so it never washes them out.
+    uint32_t bandCol = bandColor(band);
     if (tint > 0.001f) {
-        uint32_t bc = bandColor(band);
-        float amt = tint * (0.22f + 0.58f * hull);
-        if (amt > 0.85f) amt = 0.85f;
-        lite = mixc(lite, bc, amt);
-        dark = mixc(dark, scalec(bc, 0.40f), amt);
+        // A constant hue shift is invisible -- you only notice *change*.  So the
+        // hull takes the band's hue outright and its brightness swings hard with
+        // that band's level: dim between hits, blown out to near-white on them.
+        // Floor the brightness so a quiet band never hides the tank.
+        float b = 0.55f + 1.15f * hull;           // clips toward white on peaks
+        lite = mixc(lite, scalec(bandCol, b), tint * 0.94f);
+        dark = mixc(dark, scalec(bandCol, 0.14f + 0.40f * hull), tint * 0.94f);
     }
     // Flee and stun are gameplay states and must win over any livery.
     if (flee) { lite = 0x9AB4FF; dark = 0x1A2E8A; trim = 0xD0DCFF; }
@@ -307,10 +314,24 @@ static void drawEnemyTank(float px, float py, int tier, int kind, int dir, int g
     float x0, y0, x1, y1;
     fillCircle(cx, cy + CELL * 0.30f, CELL * 0.29f, 0x000000, 0.26f);
 
+    // Band halo, drawn under the tank: against the near-black tunnel this is
+    // what actually catches the eye, and it pulses rather than sitting still.
+    if (tint > 0.001f) {
+        float g1 = 0.12f + 0.95f * hull;
+        glowCircle(cx, cy, 28.0f + hull * 22.0f, bandCol, g1 * 0.95f * tint);
+        glowCircle(cx, cy, 16.0f + hull * 12.0f, bandCol, g1 * 0.65f * tint);
+    }
+
     // treads down both flanks, rolling with travel
     for (int sgn = -1; sgn <= 1; sgn += 2) {
         oriBox(o, -17.0f, 14.0f, sgn * 19.0f, sgn * 12.5f, x0, y0, x1, y1);
-        fillRoundRectV(x0, y0, x1, y1, 4.5f, mixc(C_TREAD_LT, dark, 0.35f), C_TREAD);
+        uint32_t treadLite = mixc(C_TREAD_LT, dark, 0.35f);
+        uint32_t treadDark = C_TREAD;
+        if (tint > 0.001f) {                      // treads pick it up too
+            treadLite = mixc(treadLite, bandCol, tint * (0.30f + 0.35f * hull));
+            treadDark = mixc(treadDark, scalec(bandCol, 0.30f), tint * 0.45f);
+        }
+        fillRoundRectV(x0, y0, x1, y1, 4.5f, treadLite, treadDark);
         for (int i = 0; i < 5; i++) {
             float f = -15.0f + ((i * 7 + anim) % 31);
             float ax, ay, bx, by;

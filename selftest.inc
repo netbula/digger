@@ -672,6 +672,28 @@ static int selfTest()
     feed(30, 0);
     check("H killing every monster is not enough on its own", G.state == GS_PLAY);
 
+    // Dying must not consume the stage's monsters: the roster is monLeft plus
+    // whatever is on screen, and that total has to survive a death.
+    sandbox();
+    for (int cy = 5; cy <= 11; cy++) digCellFull(5, cy);
+    { Bag b{}; b.x = 5 * CELL; b.y = 4 * CELL; G.bags.push_back(b); }
+    putDigger(5, 11, DIR_R);
+    G.monLeft = 4;
+    addMon(9, 7, 0, MK_NOBBIN, 0);
+    addMon(11, 7, 0, MK_HOBBIN, 0);
+    addMon(13, 7, 0, MK_BORER, 0);
+    G.borersOut = 1;
+    { int rosterBefore = G.monLeft + (int)G.mons.size();
+      int lives0 = G.lives;
+      feed(400, 0);                               // the bag falls and kills the digger
+      check("H the fall really did kill the digger", G.lives == lives0 - 1);
+      int rosterAfter = G.monLeft + (int)G.mons.size();
+      fprintf(g_tf, "%-56s %d -> %d\n", "H stage roster across a death",
+              rosterBefore, rosterAfter);
+      check("H dying does not shrink the stage's monster roster",
+            rosterAfter == rosterBefore);
+      check("H and the borer budget is handed back too", G.borersOut == 0); }
+
     // ---- I. monsters are released as the seam is stripped ------------------
     {
         loadLevel(3); placeDigger(); G.state = GS_PLAY;
@@ -1434,6 +1456,33 @@ static int selfTest()
         unsigned plainAgain = renderTank(0.0f, 5, 0.9f);
         check("V with the built-in theme the tank keeps its armour colours",
               plain == plainAgain);
+
+        // "The pixels differ" is far too weak a bar -- an imperceptible shift
+        // passes it.  Measure how much light the tank actually puts out at a
+        // quiet band versus a loud one; the swing has to be big to be noticed.
+        auto tankBrightness = [&](float tint, int band, float lvl) {
+            memset(g_scr, 0, sizeof(g_scr));
+            for (int b = 0; b < NUM_BANDS; b++) g_specBand[b] = 0.0f;
+            g_specBand[band] = lvl;
+            drawEnemyTank(300.0f, 300.0f, 2, MK_NOBBIN, DIR_R, DIR_R, 0,
+                          false, 0, 0, 0, 1.0f, band, tint, 400.0f, 300.0f);
+            double sum = 0; int n = 0;
+            for (int y = 260; y < 360; y++)
+                for (int x = 260; x < 360; x++) {
+                    uint32_t c = g_scr[y * SCRW + x];
+                    sum += ((c >> 16) & 255) + ((c >> 8) & 255) + (c & 255);
+                    n++;
+                }
+            return sum / (n * 3.0);               // mean channel level, 0..255
+        };
+        double quiet = tankBrightness(1.0f, 5, 0.05f);
+        double loud  = tankBrightness(1.0f, 5, 1.00f);
+        double ratio = quiet > 1.0 ? loud / quiet : 99.0;
+        fprintf(g_tf, "%-56s quiet %.1f, loud %.1f (x%.2f)\n",
+                "V tank brightness across its band", quiet, loud, ratio);
+        check("V the tank visibly blazes up on its band, not a subtle shift",
+              ratio >= 1.8);
+        check("V and it stays visible when that band is quiet", quiet > 12.0);
 
         // Armour readability must survive the light show: the hit pips and
         // armour plates are drawn in `trim`, which the livery must not touch.
