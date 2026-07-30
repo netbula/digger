@@ -125,6 +125,10 @@ static int selfTest()
     for (int cx = 2; cx <= 18; cx++) digCellFull(cx, 7);
     putDigger(2, 7, DIR_R);
     addMon(12, 7, 0, MK_NOBBIN, 0);
+    // Mute its gun: with return fire on, the tank's shell would meet the
+    // player's and both would cancel.  That is correct behaviour, but this
+    // test is isolating armour, not staging a duel.
+    G.mons[0].gunCool = 100000;
     { int sc0 = G.score;
       g_keyHit[VK_SPACE] = true; feed(1, 0); feed(160, 0);
       check("D tier-0 monster dies to one shot", G.mons.empty());
@@ -255,6 +259,7 @@ static int selfTest()
         putDigger(2, 7, DIR_R);
         G.cfg.dodgeSkill = 100;
         addMon(12, 7, 0, MK_NOBBIN, 0);
+        G.mons[0].gunCool = 100000;               // isolate dodging from return fire
         g_keyHit[VK_SPACE] = true; feed(1, 0); feed(200, 0);
         check("F with nowhere to dodge the shot still connects", G.mons.empty());
     }
@@ -1281,6 +1286,55 @@ static int selfTest()
         for (const Shell& sh : G.shells) if (sh.alive) stillFlying = true;
         check("U soil stops a shell", !stillFlying);
         check("U the digger across the map is untouched", G.dig.alive);
+    }
+    {   // Player fire and enemy fire cancel each other out.
+        sandbox();
+        for (int cx = 2; cx <= 20; cx++) digCellFull(cx, 7);
+        putDigger(4, 7, DIR_R);
+        G.cfg = cfgFor(0);
+        addMon(16, 7, 0, MK_NOBBIN, 0);           // parked, so only its shell matters
+        G.mons[0].speed = 0; G.mons[0].gunCool = 100000;
+        // launch both head on
+        G.shells[0].alive = true; G.shells[0].dir = DIR_L;
+        G.shells[0].x = 14 * CELL; G.shells[0].y = 7 * CELL + CELL / 2;
+        G.fireCool = 0; g_keyHit[VK_SPACE] = true;
+        int sc0 = G.score;
+        bool bothGone = false;
+        for (int i = 0; i < 200; i++) {
+            update();
+            bool anyShell = false;
+            for (const Shell& sh : G.shells) if (sh.alive) anyShell = true;
+            if (!anyShell && !G.bul.alive) { bothGone = true; break; }
+        }
+        check("U a fireball and a shell annihilate on contact", bothGone);
+        check("U the digger is not hit by the shell it shot down", G.dig.alive);
+        check("U the tank behind the shell is not hit either", !G.mons.empty());
+        check("U shooting down a shell scores", G.score > sc0);
+        check("U it does not count as a miss, so nothing jeers",
+              G.mons.empty() || G.mons[0].taunt == 0);
+    }
+    {   // The pair closes at 15px a tick, so a once-per-tick test would let them
+        // pass through each other.  Start them almost touching and offset by
+        // every sub-step phase to make sure none slips past.
+        int escapes = 0;
+        for (int phase = 0; phase < 15; phase++) {
+            sandbox();
+            for (int cx = 2; cx <= 20; cx++) digCellFull(cx, 7);
+            putDigger(4, 7, DIR_R);
+            G.cfg = cfgFor(0);
+            G.bul.alive = true; G.bul.dir = DIR_R; G.bul.id++;
+            G.bul.x = 8 * CELL; G.bul.y = 7 * CELL + CELL / 2;
+            G.shells[0].alive = true; G.shells[0].dir = DIR_L;
+            G.shells[0].x = 8 * CELL + 30 + phase; G.shells[0].y = 7 * CELL + CELL / 2;
+            for (int i = 0; i < 6; i++) update();
+            // if either survived while the other did too, they passed through
+            bool anyShell = false;
+            for (const Shell& sh : G.shells) if (sh.alive) anyShell = true;
+            if (anyShell && G.bul.alive) escapes++;
+        }
+        fprintf(g_tf, "%-56s %d of 15\n", "U head-on passes that slipped through", escapes);
+        check("U they never pass through each other at full closing speed",
+              escapes == 0);
     }
     {   // shells in flight are capped, and fleeing tanks hold their fire
         sandbox();

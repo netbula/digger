@@ -719,6 +719,33 @@ static void updateEnemyGuns()
         playSound(SND_HIT, 0.5f, 0.30f);          // the gun snapping onto you
     }
 }
+// Player fire and enemy fire annihilate on contact.  Worth doing well: shooting
+// down an incoming round is the most satisfying defensive move in the game.
+static void clashEffect(int ax, int ay, int bx, int by)
+{
+    float mx = (ax + bx) * 0.5f, my = (ay + by) * 0.5f;
+    burstParts(P_SPARK, mx, my, 18, 3.6f, 0.45f, 2.6f, 0xFFE8B0);
+    burstParts(P_SMOKE, mx, my, 5, 0.9f, 0.8f, 4.5f, 0x8A8A8A);
+    glowCircle(FLDX + mx, FLDY + my, 20.0f, 0xFFC060, 0.9f);
+    G.shake = 7;
+    addScore(50);                                 // a skill shot deserves paying
+    playSound(SND_HIT, 1.7f, 0.9f);
+}
+// Checked at 1px granularity from *both* sides: the two projectiles close at
+// 15px a tick, so a once-per-tick test would let them pass through each other.
+static bool bulletMeetsShell(int bx, int by)
+{
+    if (!G.bul.alive) return false;
+    for (Shell& sh : G.shells) {
+        if (!sh.alive) continue;
+        if (!overlap(bx, by, sh.x, sh.y, 14, 13)) continue;
+        clashEffect(bx, by, sh.x, sh.y);
+        sh.alive = false;
+        G.bul.alive = false;
+        return true;
+    }
+    return false;
+}
 static void updateShells()
 {
     for (int i = 0; i < MAX_SHELLS; i++) {
@@ -744,6 +771,7 @@ static void updateShells()
                 burstParts(P_SPARK, (float)sh.x, (float)sh.y, 5, 2.0f, 0.3f, 2.0f, 0xFFD070);
                 sh.alive = false; break;
             }
+            if (bulletMeetsShell(G.bul.x, G.bul.y)) break;   // shot out of the air
             if ((s & 2) == 0)
                 spawnPart(P_SPARK, (float)sh.x, (float)sh.y, 0, 0, 0.16f, 1.7f, 0xFF8030);
             if (G.dig.alive &&
@@ -932,6 +960,8 @@ static void updatePlay()
                 burstParts(P_SOIL, (float)G.bul.x, (float)G.bul.y, 5, 1.8f, 0.35f, 2.0f, 0x9A5A2A);
                 G.bul.alive = false; break;
             }
+            // meeting an incoming shell cancels both -- not a miss, so no jeer
+            if (bulletMeetsShell(G.bul.x, G.bul.y)) { hitSomething = true; break; }
             if ((s & 3) == 0)
                 spawnPart(P_SPARK, (float)G.bul.x, (float)G.bul.y, 0, 0, 0.18f, 2.0f, C_FIRE_MID);
             for (Monster& m : G.mons) {
