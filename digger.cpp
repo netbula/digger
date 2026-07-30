@@ -1,4 +1,22 @@
 // ---------------------------------------------------------------------------
+//  Digger -- a from-scratch remake of the 1983 arcade game.
+//  Copyright (C) 2026 netbula
+//
+//  This program is free software: you can redistribute it and/or modify it
+//  under the terms of the GNU General Public License as published by the Free
+//  Software Foundation, either version 3 of the License, or (at your option)
+//  any later version.
+//
+//  This program is distributed in the hope that it will be useful, but WITHOUT
+//  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+//  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+//  more details.
+//
+//  You should have received a copy of the GNU General Public License along
+//  with this program.  If not, see <https://www.gnu.org/licenses/>.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
 //  DIGGER  --  a remake of the 1983 Windmill Software arcade game.
 //
 //  Win32 / C++17, no third-party libraries and no asset files.  The frame is
@@ -1408,6 +1426,14 @@ static void drawOverlayText(HDC hdc)
                 g_fontMid, RGB(190, 200, 215), 1);
         gdiText(hdc, SCRW * 0.5f, 712, ((G.phase / 30) & 1) ? "PRESS SPACE TO START" : "",
                 g_fontMid, RGB(255, 210, 90), 1);
+        // GPLv3 section 5(d): an interactive program has to show the copyright,
+        // the warranty disclaimer, and where to find the licence.
+        gdiText(hdc, SCRW * 0.5f, SCRH - 46,
+                "COPYRIGHT (C) 2026 NETBULA  -  FREE SOFTWARE UNDER GPL v3 OR LATER",
+                g_fontSml, RGB(120, 132, 150), 1);
+        gdiText(hdc, SCRW * 0.5f, SCRH - 26,
+                "COMES WITH ABSOLUTELY NO WARRANTY  -  SEE THE LICENSE FILE FOR DETAILS",
+                g_fontSml, RGB(120, 132, 150), 1);
         return;
     }
     const float HY = (float)TOOLH;

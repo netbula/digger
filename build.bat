@@ -1,4 +1,7 @@
 @echo off
+REM  Digger -- a from-scratch remake of the 1983 arcade game.
+REM  Copyright (C) 2026 netbula.  Licensed under the GNU General Public License
+REM  version 3 or later.  Comes with ABSOLUTELY NO WARRANTY.  See LICENSE.
 REM ---------------------------------------------------------------
 REM  Build DIGGER with whatever MSVC toolchain is installed.
 REM    build.bat          compile
